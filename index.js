@@ -16,13 +16,16 @@ const logHttpMethodAndRoute = (msg) => {
 };
 
 const logResponse = (respObj = null) => {
-  responseLogs && console.log("------------------RESPONSE-------------------");
-  if (respObj) {
-    console.log(respObj);
+  if (responseLogs) {
+    console.log("------------------RESPONSE-------------------");
+    if (respObj) {
+      console.log(respObj);
+    }
   }
 };
 
 const users = [];
+const exercises = [];
 
 // Returns a random hexadecimal string to be used as ID.
 const getHexId = () => {
@@ -34,6 +37,14 @@ const getHexId = () => {
     .join("");
 
   return hexStringId;
+};
+
+const getUserById = (id) => {
+  return users.find((user) => user._id === id);
+};
+
+const getExerciseById = (id) => {
+  return exercises.filter((exercise) => exercise._id === id);
 };
 
 app.use(cors());
@@ -58,21 +69,20 @@ app.get("/api/users", (req, res) => {
   res.json(users);
 });
 
-app.get("/api/users/:_id/logs", (req, res) => {
+app.get("/api/users/:id/logs", (req, res) => {
   logHttpMethodAndRoute(`--- GET --- app.get("/api/users/:_id/logs", ...`);
 
-  const from = req.query.from;
-  const to = req.query.to;
-  const limit = +req.query.limit;
+  console.log(req.query);
+
+  let respObj = {};
+
+  const id = req.params.id;
+  const fromStr = req.query.from;
+  const toStr = req.query.to;
+  const limitStr = +req.query.limit;
+
   optionalParamsLogs &&
     console.log(`Logging optional parameters: ${from} - ${to} - ${limit}`);
-
-  // Return user object with a count property and
-  // log array of all exercises added
-  //
-  // Here always return from the users object, as user has to
-  // be already existing
-  const requestId = req.params._id;
 
   if (requestingAndPushingUserLogs) {
     console.log(`Requesting recently created used with exercises...`);
@@ -80,54 +90,74 @@ app.get("/api/users/:_id/logs", (req, res) => {
     console.log(users);
   }
 
-  // Get the users array.
-  // Find the object that represents the user by the id
-  const user = users.find((user) => user._id === requestId);
+  let fromDate;
+  let toDate;
 
+  // Return exercises on the log depending on optional params
+  if (fromStr) {
+    fromDate = new Date(fromStr);
+
+    if (fromDate === "Invalid Date") {
+      fromDate = false;
+    }
+  }
+  if (toStr) {
+    toDate = new Date(toStr);
+
+    if (toDate == "Invalid Date") {
+      // //CHANGE!!!
+      // res.status(400).send("Query `to` is not a valid date.");
+      // console.log("Log request failed: " + id + " to: " + toStr);
+      // return;
+      toDate = false;
+    }
+  }
+
+  if (limitStr && isNaN(parseInt(limitStr))) {
+    // // CHANGE!!!
+    // res.status(400).send("Query `limit` is not number.");
+    // console.log("Log request failed: " + id + " limit: " + limitStr);
+    // return;
+    limitStr = false;
+  }
+
+  // Get user by id.
+  const user = getUserById(id);
   if (user) {
-    // Add to the user obj all fields relating to exercises
-    // Add the count field with a value of 1
-    user.count = 1;
+    // Get exercises by id.
+    let exercises = getExerciseById(id);
+    console.log(`Exercises found for id ${id}: `, exercises);
 
-    // Add the log field if it does not exists
-    user.log = user.log || [];
-    let logToReturn = user.log;
+    // Apply from, to and limits to slice exercises array.
 
-    // Return exercises on the log depending on optional params
-    if (from) {
-      const fromDate = new Date(from);
-      console.log(`fromDate: ${fromDate}`);
-      logToReturn = user.log.filter((exe) => {
-        console.log(`Dates to compare: ${new Date(exe.date)} >= ${fromDate}`);
-        console.log(`Dates to return ${new Date(exe.date) >= fromDate}`);
-        return new Date(exe.date) >= fromDate;
-      });
-    }
-    if (to) {
-      const toDate = new Date(to);
-      console.log(`toDate: ${toDate}`);
-      logToReturn = user.log.filter((exe) => {
-        console.log(`Dates to compare: ${new Date(exe.date)} <= ${toDate}`);
-        console.log(`Dates to return ${new Date(exe.date) <= toDate}`);
-        return new Date(exe.date) <= toDate;
-      });
-    }
-    if (limit) {
-      console.log(`limit: ${limit}`);
-      logToReturn = user.log.slice(0, limit);
+    if (fromDate) {
+      // Filter exercises where the exercise date is > than fromDate.
+      exercises = exercises.filter(
+        (exercise) => new Date(fromDate) < new Date(exercise.date)
+      );
+      console.log("Filtered exercises", exercises);
     }
 
-    // Now use those user fields to populate the respObj
-    // Don't use the values from the req obj.
+    if (toDate) {
+      // Filter exercises where the toDate > exercise date.
+      exercises = exercises.filter(
+        (exercise) => new Date(toDate) > new Date(exercise.date)
+      );
+      console.log("Filtered exercises", exercises);
+    }
 
-    const respObj = {
-      _id: user._id,
+    if (limitStr) {
+      exercises = exercises.slice(0, limitStr);
+    }
+
+    respObj = {
       username: user.username,
-      count: user.count,
-      log: logToReturn,
+      count: exercises.length,
+      _id: id,
+      log: exercises,
     };
   } else {
-    const respObj = {
+    respObj = {
       message: "User not found!",
     };
   }
@@ -147,16 +177,22 @@ app.post("/api/users", (req, res) => {
   logHttpMethodAndRoute(`--- POST --- On app.post("/api/users", ...`);
 
   requestBodyLogs && console.log(req.body);
-  // Create user object
-  const user = {
-    username: req.body.username,
-    _id: getHexId(),
-  };
-  users.push(user);
 
-  logResponse(user);
+  const username = req.body.username;
+  if (username !== "") {
+    // Create user object
+    const user = {
+      username: req.body.username,
+      _id: getHexId(),
+    };
+    // console.log("Created user: ", user);
+    users.push(user);
+    // console.log("Users", users);
 
-  res.json(user);
+    logResponse(user);
+
+    res.json(user);
+  }
 });
 
 app.post("/api/users/:_id/exercises", (req, res) => {
@@ -184,36 +220,68 @@ app.post("/api/users/:_id/exercises", (req, res) => {
     // Add the log field as an array
     user.log = [];
 
+    const descriptionStr = req.body.description;
+    const durationStr = req.body.duration;
+    const dateStr = req.body.date;
+
+    if (descriptionStr == "") {
+      res.json(
+        (respObj = {
+          message: "Description is required!",
+        })
+      );
+    }
+
+    if (durationStr == "") {
+      res.json(
+        (respObj = {
+          message: "Duration is required!",
+        })
+      );
+    }
+
+    if (isNaN(durationStr)) {
+      res.json(
+        (respObj = {
+          message: "Duration is not a number!",
+        })
+      );
+    }
+
+    let date;
+
+    if (dateStr == "" || dateStr == undefined) {
+      date = new Date().toDateString();
+    } else {
+      date = new Date(dateStr).toDateString();
+    }
+
     // Create an exercise data obj using date, description and duration
     const exercise = {
-      description: req.body.description,
-      duration: Number(req.body.duration),
-      date: req.body.date
-        ? new Date(req.body.date).toDateString()
-        : new Date().toDateString(),
+      _id: user._id,
+      username: user.username,
+      description: descriptionStr,
+      duration: Number(durationStr),
+      date: date,
     };
 
     // Push exercise to log array
     user.log.push(exercise);
 
+    // Push exercises to the exercises array.
+    exercises.push(exercise);
+    // console.log("Created exercise", exercise);
+
     if (requestingAndPushingUserLogs) {
-      console.log(`Pushing recently created used with exercises...`);
+      console.log(`Pushing recently created user with exercises...`);
       console.log(`Current users array...`);
       console.log(users);
     }
 
-    // Now use those user fields to populate the respObj
-    // Don't use the values from the req obj.
-
-    const respObj = {
-      _id: user._id,
-      username: user.username,
-      description: exercise.description,
-      duration: exercise.duration,
-      date: exercise.date,
-    };
+    // Now use exercise as the respObj
+    respObj = exercise;
   } else {
-    const respObj = {
+    respObj = {
       message: "User not found!",
     };
   }
