@@ -5,21 +5,13 @@ const bodyParser = require("body-parser");
 const getRandomValues = require("get-random-values");
 require("dotenv").config();
 
-const httpMethodLogs = false;
-const routeLogs = false;
+const httpMethodAndRouteLogs = false;
 const requestBodyLogs = false;
 const responseLogs = false;
 const requestingAndPushingUserLogs = false;
 const optionalParamsLogs = false;
 
 const users = [];
-
-// Get username from user _id
-const getUsernameFromId = (id) => {
-  const existingUser = users.find((user) => user._id == id);
-  if (existingUser) return existingUser.username;
-  else return false;
-};
 
 // Returns a random hexadecimal string to be used as ID.
 const getHexId = () => {
@@ -41,10 +33,15 @@ app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
 });
 
-// Create GET requests
+/**
+ * =================================================================
+ *                        GET REQUESTS
+ * =================================================================
+ */
+
 app.get("/api/users", (req, res) => {
-  httpMethodLogs && console.log(`------------------GET-------------------`);
-  routeLogs && console.log(`app.get("/api/users", ...`);
+  httpMethodAndRouteLogs &&
+    console.log(`--- GET --- app.get("/api/users", ...`);
 
   responseLogs && console.log(`------------------RESPONSE-------------------`);
   // Return users array
@@ -53,8 +50,8 @@ app.get("/api/users", (req, res) => {
 });
 
 app.get("/api/users/:_id/logs", (req, res) => {
-  httpMethodLogs && console.log(`------------------GET-------------------`);
-  routeLogs && console.log(`On app.get("/api/users/:_id/logs", ...`);
+  httpMethodAndRouteLogs &&
+    console.log(`--- GET --- app.get("/api/users/:_id/logs", ...`);
 
   const from = req.query.from;
   const to = req.query.to;
@@ -122,8 +119,8 @@ app.get("/api/users/:_id/logs", (req, res) => {
       log: logToReturn,
     };
   } else {
-    respObj = {
-      message: "No users found!",
+    const respObj = {
+      message: "User not found!",
     };
   }
 
@@ -134,11 +131,16 @@ app.get("/api/users/:_id/logs", (req, res) => {
   res.json(respObj);
 });
 
-// Create both POST request handlers, make sure you capture the
-// POST request body correctly
+/**
+ * =================================================================
+ *                        POST REQUESTS
+ * =================================================================
+ */
+
 app.post("/api/users", (req, res) => {
-  httpMethodLogs && console.log(`------------------POST-------------------`);
-  routeLogs && console.log(`On app.post("/api/users", ...`);
+  httpMethodAndRouteLogs &&
+    console.log(`--- POST --- On app.post("/api/users", ...`);
+
   requestBodyLogs && console.log(req.body);
   // Create user object
   const user = {
@@ -156,8 +158,9 @@ app.post("/api/users", (req, res) => {
 });
 
 app.post("/api/users/:_id/exercises", (req, res) => {
-  httpMethodLogs && console.log(`------------------POST-------------------`);
-  routeLogs && console.log(`On app.post("/api/users/:_id/exercises", ...`);
+  httpMethodAndRouteLogs &&
+    console.log(`--- POST --- On app.post("/api/users/:_id/exercises", ...`);
+
   requestBodyLogs && console.log(req.body);
   // Return user object with a count property and
   // log array of all exercises added
@@ -170,41 +173,47 @@ app.post("/api/users/:_id/exercises", (req, res) => {
   // Find the object that represents the user by the id
   const user = users.find((user) => user._id === requestId);
 
-  // Add to the user obj all fields relating to exercises
-  // Add the count field with a value of 1
-  user.count = 1;
+  if (user) {
+    // Add to the user obj all fields relating to exercises
+    // Add the count field with a value of 1
+    user.count = 1;
 
-  // Add the log field as an array
-  user.log = [];
+    // Add the log field as an array
+    user.log = [];
 
-  // Create an exercise data obj using date, description and duration
-  const exercise = {
-    description: req.body.description,
-    duration: Number(req.body.duration),
-    date: req.body.date
-      ? new Date(req.body.date).toDateString()
-      : new Date().toDateString(),
-  };
+    // Create an exercise data obj using date, description and duration
+    const exercise = {
+      description: req.body.description,
+      duration: Number(req.body.duration),
+      date: req.body.date
+        ? new Date(req.body.date).toDateString()
+        : new Date().toDateString(),
+    };
 
-  // Push exercise to log array
-  user.log.push(exercise);
+    // Push exercise to log array
+    user.log.push(exercise);
 
-  if (requestingAndPushingUserLogs) {
-    console.log(`Pushing recently created used with exercises...`);
-    console.log(`Current users array...`);
-    console.log(users);
+    if (requestingAndPushingUserLogs) {
+      console.log(`Pushing recently created used with exercises...`);
+      console.log(`Current users array...`);
+      console.log(users);
+    }
+
+    // Now use those user fields to populate the respObj
+    // Don't use the values from the req obj.
+
+    const respObj = {
+      _id: user._id,
+      username: user.username,
+      description: exercise.description,
+      duration: exercise.duration,
+      date: exercise.date,
+    };
+  } else {
+    const respObj = {
+      message: "User not found!",
+    };
   }
-
-  // Now use those user fields to populate the respObj
-  // Don't use the values from the req obj.
-
-  const respObj = {
-    _id: user._id,
-    username: user.username,
-    description: exercise.description,
-    duration: exercise.duration,
-    date: exercise.date,
-  };
 
   if (responseLogs) {
     console.log(`------------------RESPONSE-------------------`);
