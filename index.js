@@ -11,6 +11,17 @@ const responseLogs = false;
 const requestingAndPushingUserLogs = false;
 const optionalParamsLogs = false;
 
+const logHttpMethodAndRoute = (msg) => {
+  httpMethodAndRouteLogs && console.log(msg);
+};
+
+const logResponse = (respObj = null) => {
+  responseLogs && console.log("------------------RESPONSE-------------------");
+  if (respObj) {
+    console.log(respObj);
+  }
+};
+
 const users = [];
 
 // Returns a random hexadecimal string to be used as ID.
@@ -40,18 +51,15 @@ app.get("/", (req, res) => {
  */
 
 app.get("/api/users", (req, res) => {
-  httpMethodAndRouteLogs &&
-    console.log(`--- GET --- app.get("/api/users", ...`);
+  logHttpMethodAndRoute(`--- GET --- app.get("/api/users", ...`);
 
-  responseLogs && console.log(`------------------RESPONSE-------------------`);
-  // Return users array
-  console.log(users);
+  logResponse(users);
+
   res.json(users);
 });
 
 app.get("/api/users/:_id/logs", (req, res) => {
-  httpMethodAndRouteLogs &&
-    console.log(`--- GET --- app.get("/api/users/:_id/logs", ...`);
+  logHttpMethodAndRoute(`--- GET --- app.get("/api/users/:_id/logs", ...`);
 
   const from = req.query.from;
   const to = req.query.to;
@@ -124,10 +132,8 @@ app.get("/api/users/:_id/logs", (req, res) => {
     };
   }
 
-  if (responseLogs) {
-    console.log(`------------------RESPONSE-------------------`);
-    console.log(respObj);
-  }
+  logResponse(respObj);
+
   res.json(respObj);
 });
 
@@ -138,8 +144,7 @@ app.get("/api/users/:_id/logs", (req, res) => {
  */
 
 app.post("/api/users", (req, res) => {
-  httpMethodAndRouteLogs &&
-    console.log(`--- POST --- On app.post("/api/users", ...`);
+  logHttpMethodAndRoute(`--- POST --- On app.post("/api/users", ...`);
 
   requestBodyLogs && console.log(req.body);
   // Create user object
@@ -149,17 +154,15 @@ app.post("/api/users", (req, res) => {
   };
   users.push(user);
 
-  if (responseLogs) {
-    console.log(`------------------RESPONSE-------------------`);
-    console.log(user);
-  }
+  logResponse(user);
 
   res.json(user);
 });
 
 app.post("/api/users/:_id/exercises", (req, res) => {
-  httpMethodAndRouteLogs &&
-    console.log(`--- POST --- On app.post("/api/users/:_id/exercises", ...`);
+  logHttpMethodAndRoute(
+    `--- POST --- On app.post("/api/users/:_id/exercises", ...`
+  );
 
   requestBodyLogs && console.log(req.body);
   // Return user object with a count property and
@@ -215,10 +218,7 @@ app.post("/api/users/:_id/exercises", (req, res) => {
     };
   }
 
-  if (responseLogs) {
-    console.log(`------------------RESPONSE-------------------`);
-    console.log(respObj);
-  }
+  logResponse(respObj);
 
   res.json(respObj);
 });
